@@ -4,16 +4,19 @@
 ## This scirpt is to migrate AppD on-prem controller to point AppD SaaS  ##
 ###########################################################################
 
-###### Variables #############
+###########################################################################
 APPD_HOME_DIR=$1
 APP_AGENT_STARTUP_FILE=$2
-CONTROLLER_CONFIG_FILE=$APPD_HOME_DIR/conf/controller-info.xml
-SAAS_C_HOST=192.168.0.100
+CONTROLLER_CONFIG_FILE=$APPD_HOME_DIR/ver/conf/controller-info.xml
+
+################ Update AppD SaaS Controller Values #######################
+SAAS_C_HOST=192.168.0.101
 SAAS_C_PORT=443
 SAAS_C_SSL=false
-SAAS_C_ACCOUNT=fabdevtest000003
+SAAS_C_ACCOUNT=testenv
 SAAS_C_KEY=d5734ksdd8CSR
 
+###########################################################################
 display_usage () {
    echo -e "\nPlease pass 2 arguments"
    echo -e "Usage: $0 [AppDynamics_Base_Dir] [Application_startup_file_with_absolute_path]\n"
@@ -36,7 +39,7 @@ check_app_startup_file () {
    exit 1
    fi
 }
-########## Backup config files ############################################################
+########## Backup config files ##############################################
 backup_conf_files () {
    echo -e "\nBackup Config FIles"
    echo -e "=========================================================="
@@ -44,7 +47,7 @@ backup_conf_files () {
    cp $APP_AGENT_STARTUP_FILE $APP_AGENT_STARTUP_FILE.bkp
    echo -e "Backup completed: $CONTROLLER_CONFIG_FILE.bkp & $APP_AGENT_STARTUP_FILE.bkp\n"
 }
-########## Extract and print required parameters ###########################################
+########## Extract and print required parameters ############################
 print_current_conf () {
    HOST=$(sed -n 's:.*<controller-host>\(.*\)</controller-host>.*:\1:p' $CONTROLLER_CONFIG_FILE)
    PORT=$(sed -n 's:.*<controller-port>\(.*\)</controller-port>.*:\1:p' $CONTROLLER_CONFIG_FILE)
@@ -53,7 +56,7 @@ print_current_conf () {
    KEY=$(sed -n 's:.*<account-access-key>\(.*\)</account-access-key>.*:\1:p' $CONTROLLER_CONFIG_FILE)
    echo -e "Controller Host: $HOST\nController Port: $PORT\nSSL Enabled: $SSL\nAccount Name: $ACCOUNT\nAccess Key: $KEY"
 }
-########## Update required APPD SaaS parameters ###########################################
+########## Update APPD SaaS parameters ######################################
 update_controller_conf () {
    sed -i '' -e "s/${HOST}/${SAAS_C_HOST}/g" $CONTROLLER_CONFIG_FILE
    sed -i '' -e "s/${PORT}/${SAAS_C_PORT}/g" $CONTROLLER_CONFIG_FILE
@@ -61,14 +64,15 @@ update_controller_conf () {
    sed -i '' -e "s/${ACCOUNT}/${SAAS_C_ACCOUNT}/g" $CONTROLLER_CONFIG_FILE
    sed -i '' -e "s/${KEY}/${SAAS_C_KEY}/g" $CONTROLLER_CONFIG_FILE
 }
-########## Extract and print required parameters ###########################################
+########## Extract and print required parameters ############################
 app_startup_config () {
    grep -e '-Dappdynamics.agent' $APP_AGENT_STARTUP_FILE
 }
-########## Update required APPD Proxy parameters ###########################################
+########## Update APPD SaaS Proxy parameters ################################
 update_app_startup_config () {
    CHECK_PROXY=$(grep -e '-Dappdynamics.http.proxy' $APP_AGENT_STARTUP_FILE)
    if [ $? != 0 ]; then
+       # Update AppD Proxy Values below
        sed -i ‘’ -e '/-Dappdynamics.agent.nodename/ s/$/ -Dappdynamics.http.proxyHost=10.XXX.XXX.XXX/' $APP_AGENT_STARTUP_FILE
        sed -i ‘’ -e '/-Dappdynamics.agent.nodename/ s/$/ -Dappdynamics.http.proxyPort=80/' $APP_AGENT_STARTUP_FILE
        echo -e "\nProxy parameters appended:"
@@ -81,7 +85,7 @@ if [ $# != 2 ]; then
    display_usage
    exit 1
 fi
-########## Main fuction ###############################################
+########## Main fuction ####################################################
 main () {
    echo -e "\nPrerequisites check"
    echo -e "=========================================================="
@@ -102,9 +106,9 @@ main () {
    app_startup_config
 }
 
-########## Execute main funtion to complete the job ###################
+########## Execute main funtion to complete the job ########################
 main
 
-#######################################################################
-##                      END OF THE SCRIPT                            ##
-#######################################################################
+############################################################################
+##                      END OF THE SCRIPT                                 ##
+############################################################################
