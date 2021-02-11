@@ -43,8 +43,9 @@ check_app_startup_file () {
 backup_conf_files () {
    echo -e "\nBackup Config FIles"
    echo -e "=========================================================="
-   cp $CONTROLLER_CONFIG_FILE $CONTROLLER_CONFIG_FILE.bkp
-   cp $APP_AGENT_STARTUP_FILE $APP_AGENT_STARTUP_FILE.bkp
+   TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+   cp $CONTROLLER_CONFIG_FILE $CONTROLLER_CONFIG_FILE.bkp_$TIMESTAMP
+   cp $APP_AGENT_STARTUP_FILE $APP_AGENT_STARTUP_FILE.bkp_$TIMESTAMP
    echo -e "Backup completed: $CONTROLLER_CONFIG_FILE.bkp & $APP_AGENT_STARTUP_FILE.bkp\n"
 }
 ########## Extract and print required parameters ############################
