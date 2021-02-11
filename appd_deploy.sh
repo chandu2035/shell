@@ -16,10 +16,41 @@ SAAS_C_SSL=false
 SAAS_C_ACCOUNT=testenv
 SAAS_C_KEY=d5734ksdd8CSR
 
-###########################################################################
+########## Update APPD SaaS Proxy parameters ################################
+update_app_startup_config () {
+   CHECK_PROXY=$(grep -e '-Dappdynamics.http.proxy' $APP_AGENT_STARTUP_FILE)
+   if [ $? != 0 ]; then
+       # Update AppD Proxy Values below
+       sed -i ‘’ -e '/-Dappdynamics.agent.nodename/ s/$/ -Dappdynamics.http.proxyHost=10.XXX.XXX.XXX/' $APP_AGENT_STARTUP_FILE
+       sed -i ‘’ -e '/-Dappdynamics.agent.nodename/ s/$/ -Dappdynamics.http.proxyPort=80/' $APP_AGENT_STARTUP_FILE
+       echo -e "\nProxy parameters appended:"
+       else
+       echo -e "\nProxy parameters already available"
+   fi
+}
+
+############### Prerequisites check and etc.##################################
 display_usage () {
    echo -e "\nPlease pass 2 arguments"
    echo -e "Usage: $0 [AppDynamics_Base_Dir] [Application_startup_file_with_absolute_path]\n"
+}
+
+confirm_execution () {
+   echo -e "\n"
+   read -r -p "Would you like to proceed ? [Y/n] " input 
+   case $input in
+      yY][eE][sS]|[yY])
+      echo "Proceeding with changes......."
+      ;;
+      [nN][oO]|[nN])
+      echo "Cancelled execution."
+      exit
+      ;;
+      *)
+      echo "Invalid input..."
+      exit 1
+      ;;
+   esac
 }
 
 check_appd_dir () {
@@ -33,7 +64,7 @@ check_appd_dir () {
 
 check_app_startup_file () {
    if [ -f "$APP_AGENT_STARTUP_FILE" ]; then
-   echo -e "File: $APP_AGENT_STARTUP_FILE exists, and proceeding further......"
+   echo -e "File: $APP_AGENT_STARTUP_FILE exists"
    else
    echo -e "$APP_AGENT_STARTUP_FILE File DOES NOT exists"
    exit 1
@@ -46,7 +77,7 @@ backup_conf_files () {
    TIMESTAMP=$(date +%Y%m%d_%H%M%S)
    cp $CONTROLLER_CONFIG_FILE $CONTROLLER_CONFIG_FILE.bkp_$TIMESTAMP
    cp $APP_AGENT_STARTUP_FILE $APP_AGENT_STARTUP_FILE.bkp_$TIMESTAMP
-   echo -e "Backup completed: $CONTROLLER_CONFIG_FILE.bkp & $APP_AGENT_STARTUP_FILE.bkp\n"
+   echo -e "Backup has been completed for below files:\n$CONTROLLER_CONFIG_FILE\n$APP_AGENT_STARTUP_FILE\n"
 }
 ########## Extract and print required parameters ############################
 print_current_conf () {
@@ -69,18 +100,6 @@ update_controller_conf () {
 app_startup_config () {
    grep -e '-Dappdynamics.agent' $APP_AGENT_STARTUP_FILE
 }
-########## Update APPD SaaS Proxy parameters ################################
-update_app_startup_config () {
-   CHECK_PROXY=$(grep -e '-Dappdynamics.http.proxy' $APP_AGENT_STARTUP_FILE)
-   if [ $? != 0 ]; then
-       # Update AppD Proxy Values below
-       sed -i ‘’ -e '/-Dappdynamics.agent.nodename/ s/$/ -Dappdynamics.http.proxyHost=10.XXX.XXX.XXX/' $APP_AGENT_STARTUP_FILE
-       sed -i ‘’ -e '/-Dappdynamics.agent.nodename/ s/$/ -Dappdynamics.http.proxyPort=80/' $APP_AGENT_STARTUP_FILE
-       echo -e "\nProxy parameters appended:"
-       else
-       echo -e "\nProxy parameters already available"
-   fi
-}
 
 if [ $# != 2 ]; then
    display_usage
@@ -92,17 +111,17 @@ main () {
    echo -e "=========================================================="
    check_appd_dir
    check_app_startup_file
-   backup_conf_files
-   
-   echo -e "Current configurations of $CONTROLLER_CONFIG_FILE"
-   echo -e "=========================================================="
-   print_current_conf
-   update_controller_conf
-   echo -e "\nUPDATED APPD SaaS CONFIGURATION in $CONTROLLER_CONFIG_FILE"
+   echo -e "\nCurrent configurations of $CONTROLLER_CONFIG_FILE"
    echo -e "=========================================================="
    print_current_conf
    echo -e "\nPresent AppD parameters:"
    app_startup_config
+   confirm_execution
+   backup_conf_files
+   update_controller_conf
+   echo -e "\nUPDATED APPD SaaS CONFIGURATION in $CONTROLLER_CONFIG_FILE"
+   echo -e "=========================================================="
+   print_current_conf
    update_app_startup_config
    app_startup_config
 }
