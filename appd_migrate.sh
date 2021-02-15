@@ -10,19 +10,19 @@ APP_AGENT_STARTUP_FILE=$2
 CONTROLLER_CONFIG_FILE=$APPD_HOME_DIR/ver/conf/controller-info.xml
 
 ################ Update AppD SaaS Controller Values #######################
-SAAS_C_HOST=192.168.0.101
-SAAS_C_PORT=443
-SAAS_C_SSL=false
-SAAS_C_ACCOUNT=testenv
-SAAS_C_KEY=d5734ksdd8CSR
+SAAS_C_HOST=prod.saas.appd
+SAAS_C_PORT=8443
+SAAS_C_SSL=true
+SAAS_C_ACCOUNT=testenv_newtest
+SAAS_C_KEY=d5734ksdd8CSR12345
 
 ########## Update APPD SaaS Proxy parameters ################################
 update_app_startup_config () {
    CHECK_PROXY=$(grep -e '-Dappdynamics.http.proxy' $APP_AGENT_STARTUP_FILE)
    if [ $? != 0 ]; then
        # Update AppD Proxy Values below
-       sed -i ‘’ -e '/-Dappdynamics.agent.nodename/ s/$/ -Dappdynamics.http.proxyHost=10.XXX.XXX.XXX/' $APP_AGENT_STARTUP_FILE
-       sed -i ‘’ -e '/-Dappdynamics.agent.nodename/ s/$/ -Dappdynamics.http.proxyPort=80/' $APP_AGENT_STARTUP_FILE
+       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyHost=10.10.0.10/' $APP_AGENT_STARTUP_FILE
+       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyPort=8080/' $APP_AGENT_STARTUP_FILE
        echo -e "\nProxy parameters appended:"
        else
        echo -e "\nProxy parameters already available"
@@ -70,6 +70,7 @@ check_app_startup_file () {
    exit 1
    fi
 }
+
 ########## Backup config files ##############################################
 backup_conf_files () {
    echo -e "\nBackup Config FIles"
@@ -79,6 +80,7 @@ backup_conf_files () {
    cp $APP_AGENT_STARTUP_FILE $APP_AGENT_STARTUP_FILE.bkp_$TIMESTAMP
    echo -e "Backup has been completed for below files:\n$CONTROLLER_CONFIG_FILE\n$APP_AGENT_STARTUP_FILE\n"
 }
+
 ########## Extract and print required parameters ############################
 print_current_conf () {
    HOST=$(sed -n 's:.*<controller-host>\(.*\)</controller-host>.*:\1:p' $CONTROLLER_CONFIG_FILE)
@@ -88,6 +90,7 @@ print_current_conf () {
    KEY=$(sed -n 's:.*<account-access-key>\(.*\)</account-access-key>.*:\1:p' $CONTROLLER_CONFIG_FILE)
    echo -e "Controller Host: $HOST\nController Port: $PORT\nSSL Enabled: $SSL\nAccount Name: $ACCOUNT\nAccess Key: $KEY"
 }
+
 ########## Update APPD SaaS parameters ######################################
 update_controller_conf () {
    sed -i '' -e "s/${HOST}/${SAAS_C_HOST}/g" $CONTROLLER_CONFIG_FILE
@@ -96,6 +99,7 @@ update_controller_conf () {
    sed -i '' -e "s/${ACCOUNT}/${SAAS_C_ACCOUNT}/g" $CONTROLLER_CONFIG_FILE
    sed -i '' -e "s/${KEY}/${SAAS_C_KEY}/g" $CONTROLLER_CONFIG_FILE
 }
+
 ########## Extract and print required parameters ############################
 app_startup_config () {
    grep -e '-Dappdynamics.agent' $APP_AGENT_STARTUP_FILE
@@ -105,6 +109,7 @@ if [ $# != 2 ]; then
    display_usage
    exit 1
 fi
+
 ########## Main fuction ####################################################
 main () {
    echo -e "\nPrerequisites check"
@@ -117,7 +122,7 @@ main () {
    echo -e "\nPresent AppD parameters:"
    app_startup_config
    confirm_execution
-   backup_conf_files
+   #backup_conf_files
    update_controller_conf
    echo -e "\nUPDATED APPD SaaS CONFIGURATION in $CONTROLLER_CONFIG_FILE"
    echo -e "=========================================================="
