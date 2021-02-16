@@ -145,7 +145,7 @@ update_prod_app_startup_config () {
    fi
 }
 
-########## UAT Migration ######################################################
+########## UAT Migration ####################################################
 uat_migration () {
    echo -e "\nAppD migration prerequisites check"
    echo -e "=========================================================="
