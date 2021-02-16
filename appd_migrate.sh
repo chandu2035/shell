@@ -4,53 +4,34 @@
 ## This scirpt is to migrate AppD on-prem controller to point AppD SaaS  ##
 ###########################################################################
 
+################ Update UAT AppD SaaS Controller Values ###################
+UAT_SAAS_C_HOST=uat.appd.saas.host
+UAT_SAAS_C_PORT=8443
+UAT_SAAS_C_SSL=true
+UAT_SAAS_C_ACCOUNT=uat_env
+UAT_SAAS_C_KEY=d5734ksdd8CSRUAT
+UAT_APPD_PROXYHOST=172.0.0.128
+UAT_APPD_PROXYPORT=80
+
+################ Update PROD AppD SaaS Controller Values ##################
+PROD_SAAS_C_HOST=prod.saas.appd
+PROD_SAAS_C_PORT=443
+PROD_SAAS_C_SSL=true
+PROD_SAAS_C_ACCOUNT=prod_env
+PROD_SAAS_C_KEY=prd12345intePROD
+PROD_APPD_PROXYHOST=10.163.0.100
+PROD_APPD_PROXYPORT=8080
+
 ###########################################################################
 APPD_HOME_DIR=$1
 APP_AGENT_STARTUP_FILE=$2
+ENVIRONMENT=$3
 CONTROLLER_CONFIG_FILE=$APPD_HOME_DIR/ver/conf/controller-info.xml
 
-################ Update AppD SaaS Controller Values #######################
-SAAS_C_HOST=prod.saas.appd
-SAAS_C_PORT=8443
-SAAS_C_SSL=true
-SAAS_C_ACCOUNT=testenv_newtest
-SAAS_C_KEY=d5734ksdd8CSR12345
-
-########## Update APPD SaaS Proxy parameters ################################
-update_app_startup_config () {
-   CHECK_PROXY=$(grep -e '-Dappdynamics.http.proxy' $APP_AGENT_STARTUP_FILE)
-   if [ $? != 0 ]; then
-       # Update AppD Proxy Values below
-       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyHost=10.10.0.10/' $APP_AGENT_STARTUP_FILE
-       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyPort=8080/' $APP_AGENT_STARTUP_FILE
-       echo -e "\nProxy parameters appended:"
-       else
-       echo -e "\nProxy parameters already available"
-   fi
-}
-
-############### Prerequisites check and etc.##################################
+###########################################################################
 display_usage () {
-   echo -e "\nPlease pass 2 arguments"
-   echo -e "Usage: $0 [AppDynamics_Base_Dir] [Application_startup_file_with_absolute_path]\n"
-}
-
-confirm_execution () {
-   echo -e "\n"
-   read -r -p "Would you like to proceed ? [Y/n] " input 
-   case $input in
-      yY][eE][sS]|[yY])
-      echo "Proceeding with changes......."
-      ;;
-      [nN][oO]|[nN])
-      echo "Cancelled execution."
-      exit
-      ;;
-      *)
-      echo "Invalid input..."
-      exit 1
-      ;;
-   esac
+   echo -e "\nPlease pass below required valid arguments:"
+   echo -e "Usage: $0 [appd_base_dir] [/path/startup file] [environment: uat/prod]\n"
 }
 
 check_appd_dir () {
@@ -71,6 +52,41 @@ check_app_startup_file () {
    fi
 }
 
+confirm_execution () {
+   echo -e "\n"
+   read -r -p "Would you like to proceed ? [Y/n] " input 
+   case $input in
+      yY][eE][sS]|[yY])
+      echo "Proceeding with changes......."
+      ;;
+      [nN][oO]|[nN])
+      echo "Cancelled execution."
+      exit
+      ;;
+      *)
+      echo "Invalid input..."
+      exit 1
+      ;;
+   esac
+}
+
+########## Extract and print required parameters ############################
+app_startup_config () {
+   grep "^[^#;]" $APP_AGENT_STARTUP_FILE | grep  -e 'javaagent.jar'
+}
+
+########## Extract and print required parameters ############################
+print_current_conf () {
+   echo -e "\nCurrent configurations of $CONTROLLER_CONFIG_FILE"
+   echo -e "=========================================================="
+   HOST=$(sed -n 's:.*<controller-host>\(.*\)</controller-host>.*:\1:p' $CONTROLLER_CONFIG_FILE)
+   PORT=$(sed -n 's:.*<controller-port>\(.*\)</controller-port>.*:\1:p' $CONTROLLER_CONFIG_FILE)
+   SSL=$(sed -n 's:.*<controller-ssl-enabled>\(.*\)</controller-ssl-enabled>.*:\1:p' $CONTROLLER_CONFIG_FILE)
+   ACCOUNT=$(sed -n 's:.*<account-name>\(.*\)</account-name>.*:\1:p' $CONTROLLER_CONFIG_FILE)
+   KEY=$(sed -n 's:.*<account-access-key>\(.*\)</account-access-key>.*:\1:p' $CONTROLLER_CONFIG_FILE)
+   echo -e "Controller Host: $HOST\nController Port: $PORT\nSSL Enabled: $SSL\nAccount Name: $ACCOUNT\nAccess Key: $KEY"
+}
+
 ########## Backup config files ##############################################
 backup_conf_files () {
    echo -e "\nBackup Config FIles"
@@ -81,59 +97,108 @@ backup_conf_files () {
    echo -e "Backup has been completed for below files:\n$CONTROLLER_CONFIG_FILE\n$APP_AGENT_STARTUP_FILE\n"
 }
 
-########## Extract and print required parameters ############################
-print_current_conf () {
-   HOST=$(sed -n 's:.*<controller-host>\(.*\)</controller-host>.*:\1:p' $CONTROLLER_CONFIG_FILE)
-   PORT=$(sed -n 's:.*<controller-port>\(.*\)</controller-port>.*:\1:p' $CONTROLLER_CONFIG_FILE)
-   SSL=$(sed -n 's:.*<controller-ssl-enabled>\(.*\)</controller-ssl-enabled>.*:\1:p' $CONTROLLER_CONFIG_FILE)
-   ACCOUNT=$(sed -n 's:.*<account-name>\(.*\)</account-name>.*:\1:p' $CONTROLLER_CONFIG_FILE)
-   KEY=$(sed -n 's:.*<account-access-key>\(.*\)</account-access-key>.*:\1:p' $CONTROLLER_CONFIG_FILE)
-   echo -e "Controller Host: $HOST\nController Port: $PORT\nSSL Enabled: $SSL\nAccount Name: $ACCOUNT\nAccess Key: $KEY"
+########## UAT Update APPD SaaS Controller ##################################
+update_uat_controller_conf () {
+   echo -e "\nUPDATED APPD SaaS CONFIGURATION in $CONTROLLER_CONFIG_FILE"
+   echo -e "=========================================================="
+   sed -i '' -e "s/${HOST}/${UAT_SAAS_C_HOST}/g" $CONTROLLER_CONFIG_FILE
+   sed -i '' -e "s/${PORT}/${UAT_SAAS_C_PORT}/g" $CONTROLLER_CONFIG_FILE
+   sed -i '' -e "s/${SSL}/${UAT_SAAS_C_SSL}/g" $CONTROLLER_CONFIG_FILE
+   sed -i '' -e "s/${ACCOUNT}/${UAT_SAAS_C_ACCOUNT}/g" $CONTROLLER_CONFIG_FILE
+   sed -i '' -e "s/${KEY}/${UAT_SAAS_C_KEY}/g" $CONTROLLER_CONFIG_FILE
 }
 
-########## Update APPD SaaS parameters ######################################
-update_controller_conf () {
-   sed -i '' -e "s/${HOST}/${SAAS_C_HOST}/g" $CONTROLLER_CONFIG_FILE
-   sed -i '' -e "s/${PORT}/${SAAS_C_PORT}/g" $CONTROLLER_CONFIG_FILE
-   sed -i '' -e "s/${SSL}/${SAAS_C_SSL}/g" $CONTROLLER_CONFIG_FILE
-   sed -i '' -e "s/${ACCOUNT}/${SAAS_C_ACCOUNT}/g" $CONTROLLER_CONFIG_FILE
-   sed -i '' -e "s/${KEY}/${SAAS_C_KEY}/g" $CONTROLLER_CONFIG_FILE
+########## Update UAT APPD SaaS Proxy parameters ############################
+update_uat_app_startup_config () {
+   CHECK_PROXY=$(grep -e '-Dappdynamics.http.proxy' $APP_AGENT_STARTUP_FILE)
+   if [ $? != 0 ]; then
+       # Update AppD Proxy Values below
+       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyHost='"$UAT_APPD_PROXYHOST"'/' $APP_AGENT_STARTUP_FILE
+       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyPort='"$UAT_APPD_PROXYPORT"'/' $APP_AGENT_STARTUP_FILE
+       echo -e "\nProxy parameters appended:"
+       else
+       echo -e "\nProxy parameters already available"
+   fi
 }
 
-########## Extract and print required parameters ############################
-app_startup_config () {
-   grep -e '-Dappdynamics.agent' $APP_AGENT_STARTUP_FILE
+########## UAT Update APPD SaaS Controller ##################################
+update_prod_controller_conf () {
+   echo -e "\nUPDATED APPD SaaS CONFIGURATION in $CONTROLLER_CONFIG_FILE"
+   echo -e "=========================================================="
+   sed -i '' -e "s/${HOST}/${PROD_SAAS_C_HOST}/g" $CONTROLLER_CONFIG_FILE
+   sed -i '' -e "s/${PORT}/${PROD_SAAS_C_PORT}/g" $CONTROLLER_CONFIG_FILE
+   sed -i '' -e "s/${SSL}/${PROD_SAAS_C_SSL}/g" $CONTROLLER_CONFIG_FILE
+   sed -i '' -e "s/${ACCOUNT}/${PROD_SAAS_C_ACCOUNT}/g" $CONTROLLER_CONFIG_FILE
+   sed -i '' -e "s/${KEY}/${PROD_SAAS_C_KEY}/g" $CONTROLLER_CONFIG_FILE
 }
 
-if [ $# != 2 ]; then
-   display_usage
-   exit 1
-fi
+########## Update PROD APPD SaaS Proxy parameters ###########################
+update_prod_app_startup_config () {
+   CHECK_PROXY=$(grep -e '-Dappdynamics.http.proxy' $APP_AGENT_STARTUP_FILE)
+   if [ $? != 0 ]; then
+       # Update AppD Proxy Values below
+       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyHost='"$PROD_APPD_PROXYHOST"'/' $APP_AGENT_STARTUP_FILE
+       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyPort='"$PROD_APPD_PROXYPORT"'/' $APP_AGENT_STARTUP_FILE
+       echo -e "\nProxy parameters appended:"
+       else
+       echo -e "\nProxy parameters already available:"
+   fi
+}
 
-########## Main fuction ####################################################
-main () {
-   echo -e "\nPrerequisites check"
+########## UAT Migration ######################################################
+uat_migration () {
+   echo -e "\nAppD migration prerequisites check"
    echo -e "=========================================================="
    check_appd_dir
    check_app_startup_file
-   echo -e "\nCurrent configurations of $CONTROLLER_CONFIG_FILE"
-   echo -e "=========================================================="
    print_current_conf
    echo -e "\nPresent AppD parameters:"
    app_startup_config
    confirm_execution
-   #backup_conf_files
-   update_controller_conf
-   echo -e "\nUPDATED APPD SaaS CONFIGURATION in $CONTROLLER_CONFIG_FILE"
-   echo -e "=========================================================="
+   backup_conf_files
+   update_uat_controller_conf
    print_current_conf
-   update_app_startup_config
+   update_uat_app_startup_config
    app_startup_config
 }
 
-########## Execute main funtion to complete the job ########################
-main
+########## PROD Migration ######################################################
+prod_migration () {
+   echo -e "\nAppD migration prerequisites check"
+   echo -e "=========================================================="
+   check_appd_dir
+   check_app_startup_file
+   print_current_conf
+   echo -e "\nPresent AppD parameters:"
+   app_startup_config
+   confirm_execution
+   backup_conf_files
+   update_prod_controller_conf
+   print_current_conf
+   update_prod_app_startup_config
+   app_startup_config
+}
 
-############################################################################
-##                      END OF THE SCRIPT                                 ##
-############################################################################
+################################################################################
+if [ $# != 3 ]; then
+   display_usage
+   exit 1
+fi
+
+if [[ $3 = "UAT" || $3 = "uat" ]]; then
+   echo -e "\nUAT migration:"
+   echo -e "=========================================================="
+   uat_migration
+   elif [[ $3 = "PROD" || $3 = "prod" ]]; then
+   echo -e "\nPROD migration:"
+   echo -e "=========================================================="
+   prod_migration
+   else
+   echo -e "\nInvalid entry!"
+   display_usage
+   exit 1
+fi
+
+###############################################################################
+##                         END OF THE SCRIPT                                 ##
+###############################################################################
