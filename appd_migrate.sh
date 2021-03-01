@@ -52,6 +52,21 @@ check_app_startup_file () {
    fi
 }
 
+check_perms () {
+   if [ -w "$CONTROLLER_CONFIG_FILE" ]; then
+   echo -e "User has write permissions: $CONTROLLER_CONFIG_FILE"
+   else
+   echo -e "User doesn't have write permissions on $CONTROLLER_CONFIG_FILE"
+   exit 1
+   fi
+   if [ -w "$APP_AGENT_STARTUP_FILE" ]; then
+   echo -e "User has write permissions: $APP_AGENT_STARTUP_FILE"
+   else
+   echo -e "User doesn't have write permissions on $APP_AGENT_STARTUP_FILE"
+   exit 1
+   fi
+}
+
 confirm_execution () {
    echo -e "\n"
    read -r -p "Would you like to proceed ? [Y/n] " input 
@@ -109,12 +124,13 @@ update_uat_controller_conf () {
 }
 
 ########## Update UAT APPD SaaS Proxy parameters ############################
-update_uat_app_startup_config () {
+function update_uat_app_startup_config () {
    CHECK_PROXY=$(grep -e '-Dappdynamics.http.proxy' $APP_AGENT_STARTUP_FILE)
    if [ $? != 0 ]; then
        # Update AppD Proxy Values below
-       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyHost='"$UAT_APPD_PROXYHOST"'/' $APP_AGENT_STARTUP_FILE
-       sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyPort='"$UAT_APPD_PROXYPORT"'/' $APP_AGENT_STARTUP_FILE
+       #sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyHost='"$UAT_APPD_PROXYHOST"'/' $APP_AGENT_STARTUP_FILE
+       sed -i 's#javaagent.jar#javaagent.jar -Dappdynamics.http.proxyHost='"$UAT_APPD_PROXYHOST"' -Dappdynamics.http.proxyPort='"$UAT_APPD_PROXYPORT"''
+       #sed -i '' -e '/^#/!s/javaagent\.jar.*/& -Dappdynamics.http.proxyPort='"$UAT_APPD_PROXYPORT"'/' $APP_AGENT_STARTUP_FILE
        echo -e "\nProxy parameters appended:"
        else
        echo -e "\nProxy parameters already available"
@@ -145,12 +161,13 @@ update_prod_app_startup_config () {
    fi
 }
 
-########## UAT Migration ####################################################
+########## UAT Migration ######################################################
 uat_migration () {
    echo -e "\nAppD migration prerequisites check"
    echo -e "=========================================================="
    check_appd_dir
    check_app_startup_file
+   check_perms
    print_current_conf
    echo -e "\nPresent AppD parameters:"
    app_startup_config
@@ -168,6 +185,7 @@ prod_migration () {
    echo -e "=========================================================="
    check_appd_dir
    check_app_startup_file
+   check_perms
    print_current_conf
    echo -e "\nPresent AppD parameters:"
    app_startup_config
